@@ -1,0 +1,13 @@
+[project]
+name = "henny"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "adafruit-ampy>=1.1.0",
+    "esptool>=4.8.1",
+    "pyserial>=3.5",
+]

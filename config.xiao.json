@@ -1,0 +1,39 @@
+{
+  "chickens": {
+    "adults": 6,
+    "chicks": [],
+    "base_feed_per_adult": 120
+  },
+  "feeding": {
+    "season_factor": true,
+    "daily_feedings": {
+      "summer": 4,
+      "winter": 3,
+      "spring": 3,
+      "autumn": 3
+    }
+  },
+  "hardware": {
+    "relay_pin": 10,
+    "led_pin": 8,
+    "button_pin": 9,
+    "motor_timeout": 30
+  },
+  "spreader": {
+    "grams_per_10s": 50.0,
+    "last_calibration": null,
+    "calibration_history": []
+  },
+  "wifi": {
+    "ssid": "",
+    "password": "",
+    "ap_mode": true,
+    "ap_ssid": "Henny-Setup",
+    "ap_password": "hennyfeeder"
+  },
+  "schedule": {
+    "last_feed_time": null,
+    "daily_counter": 0,
+    "last_reset_day": null
+  }
+}
