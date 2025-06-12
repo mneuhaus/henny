@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# IDE/editor settings
+.claude/
+.vscode/
+.idea/
+
+# Local configuration files and secrets
+config.json
+config.xiao.json
+calibration.json
+
+# Firmware binaries and backup files
+*.bin
+*.backup.json
+uv.lock
+
+# MicroPython compiled modules
+*.mpy
