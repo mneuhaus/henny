@@ -47,8 +47,8 @@
     <!-- Demo Notice -->
     <div class="bg-blue-600 text-white text-center py-2 px-4">
         <p class="text-sm">
-            <strong>Demo Interface</strong> - This is a static preview of the Henny Smart Chicken Feeder web interface. 
-            <a href="https://github.com/mneuhaus/henny" class="underline hover:no-underline">View on GitHub</a>
+            <strong>Live Demo Interface</strong> - Complete Henny Smart Chicken Feeder web interface preview. 
+            <a href="https://github.com/mneuhaus/henny" class="underline hover:no-underline">View Source on GitHub</a>
         </p>
     </div>
 
@@ -70,13 +70,13 @@
                     <p class="text-emerald-100 text-sm mt-1">Intelligent Chicken Feeding</p>
                 </div>
                 <div class="flex gap-3">
-                    <button class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Motor Test (3s)">
+                    <button onclick="showDemoNotification('Motor test started (3 seconds)', 'info')" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Motor Test (3s)">
                         <i data-lucide="zap" class="w-5 h-5"></i>
                     </button>
-                    <button id="language-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Language">
+                    <button id="language-btn" onclick="toggleLanguageDemo()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Language">
                         <span class="text-sm font-medium">EN</span>
                     </button>
-                    <button id="settings-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Settings">
+                    <button id="settings-btn" onclick="toggleSettings()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Settings">
                         <i data-lucide="settings" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -104,30 +104,9 @@
                             <td class="py-2 px-3"></td>
                             <td class="py-2 pl-3"></td>
                         </tr>
-                        <tr>
-                            <td class="text-gray-600 font-medium text-right py-2 pr-3">07:00</td>
-                            <td class="text-xs text-gray-500 font-medium text-center py-2 px-3">240g</td>
-                            <td class="text-xs text-gray-400 font-medium text-center py-2 px-3">48s</td>
-                            <td class="py-2 pl-3">
-                                <span class="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full">Completed</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-gray-600 font-medium text-right py-2 pr-3">12:00</td>
-                            <td class="text-xs text-gray-500 font-medium text-center py-2 px-3">240g</td>
-                            <td class="text-xs text-gray-400 font-medium text-center py-2 px-3">48s</td>
-                            <td class="py-2 pl-3">
-                                <span class="text-sm bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">Pending</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="text-gray-600 font-medium text-right py-2 pr-3">17:00</td>
-                            <td class="text-xs text-gray-500 font-medium text-center py-2 px-3">240g</td>
-                            <td class="text-xs text-gray-400 font-medium text-center py-2 px-3">48s</td>
-                            <td class="py-2 pl-3">
-                                <span class="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full">Scheduled</span>
-                            </td>
-                        </tr>
+                        <tbody id="feeding-schedule">
+                            <!-- Dynamic content populated by JavaScript -->
+                        </tbody>
                         <tr class="border-t border-gray-100">
                             <td class="text-gray-500 text-sm text-right py-2 pr-3">19:30</td>
                             <td class="text-gray-500 text-sm py-2 px-3">
@@ -152,7 +131,7 @@
                 <div class="space-y-3">
                     <div class="flex justify-between">
                         <span class="text-gray-600">Adult Chickens</span>
-                        <span class="font-medium">6</span>
+                        <span class="font-medium" id="status-chickens">6</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Calibration</span>
@@ -160,7 +139,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">WiFi</span>
-                        <span class="font-medium text-green-600">Demo Mode</span>
+                        <span class="font-medium text-green-600">demo_wifi</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Time</span>
@@ -168,11 +147,11 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Daily Feed</span>
-                        <span class="font-medium">720g</span>
+                        <span class="font-medium" id="status-daily">720g</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Monthly Feed</span>
-                        <span class="font-medium">21.6kg</span>
+                        <span class="font-medium" id="status-monthly">21.6kg</span>
                     </div>
                 </div>
             </div>
@@ -180,7 +159,7 @@
 
         <!-- Settings Panel -->
         <div id="settings-panel" class="hidden space-y-6">
-            <!-- Configuration -->
+            <!-- Chicken Configuration -->
             <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="bird" class="w-6 h-6 text-gray-500"></i>
@@ -218,38 +197,153 @@
                                oninput="updateSunsetOffsetDisplay(this.value)">
                     </div>
                     <div class="flex justify-center">
-                        <button class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl">
-                            Update (Demo Only)
+                        <button onclick="showDemoNotification('Configuration updated! (Demo only)', 'success')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                            Update Configuration
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Demo Info -->
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl border border-blue-200/30 p-6">
+            <!-- Calibration -->
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="scale" class="w-6 h-6 text-gray-500"></i>
+                    Calibration
+                </h3>
+                <div class="space-y-4">
+                    <p class="text-gray-600 text-sm">Run a 10-second calibration test, then measure the actual dispensed amount and enter it below.</p>
+                    <div class="grid md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Measured Amount (g)</label>
+                            <input type="number" id="calValue" placeholder="Dispensed Grams" step="0.1"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <button onclick="showDemoNotification('Calibration started! (Demo only)', 'info')" class="bg-slate-500 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                            Start Test
+                        </button>
+                        <button onclick="showDemoNotification('Calibration saved! (Demo only)', 'success')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                            Save Calibration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timezone Configuration -->
+            <div class="bg-gradient-to-br from-white to-teal-50 rounded-2xl shadow-xl border border-teal-200/30 p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="clock" class="w-6 h-6 text-gray-500"></i>
+                    Timezone Configuration
+                </h3>
+                <div class="space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div class="text-sm font-medium text-blue-800">Current Time</div>
+                        <div class="text-blue-600" id="timezone-current-time">15:42 (CEST)</div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
+                            <select id="timezone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                <option value="CET-1CEST,M3.5.0,M10.5.0/3" selected>Europe/Berlin (CET/CEST)</option>
+                                <option value="GMT0BST,M3.5.0/1,M10.5.0">Europe/London (GMT/BST)</option>
+                                <option value="CET-1CEST,M3.5.0/2,M10.5.0/3">Europe/Paris (CET/CEST)</option>
+                                <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Helsinki (EET/EEST)</option>
+                                <option value="EST5EDT,M3.2.0,M11.1.0">America/New_York (EST/EDT)</option>
+                                <option value="PST8PDT,M3.2.0,M11.1.0">America/Los_Angeles (PST/PDT)</option>
+                                <option value="JST-9">Asia/Tokyo (JST)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="showDemoNotification('Timezone saved! (Demo only)', 'success')" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                                Save Timezone
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WiFi Configuration -->
+            <div class="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl border border-blue-200/30 p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="wifi" class="w-6 h-6 text-gray-500"></i>
+                    WiFi Configuration
+                </h3>
+                <div class="space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <div class="text-sm font-medium text-blue-800">Current Connection</div>
+                        <div class="text-blue-600">demo_wifi (Connected)</div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Network Name (SSID)</label>
+                            <input type="text" id="wifiSSID" placeholder="WiFi Network Name"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <input type="password" id="wifiPassword" placeholder="WiFi Password"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                        </div>
+                    </div>
+                    <button onclick="showDemoNotification('WiFi settings saved! (Demo only)', 'success')" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        Save WiFi & Restart
+                    </button>
+                </div>
+            </div>
+
+            <!-- Firmware Update -->
+            <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-xl border border-purple-200/30 p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="download" class="w-6 h-6 text-gray-500"></i>
+                    Firmware Update
+                </h3>
+                <div class="space-y-4">
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <div class="text-sm font-medium text-purple-800">Current Version</div>
+                        <div class="text-purple-600">Henny v2.0 - Built Jun 13 2025 09:42:15</div>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <div class="text-sm font-medium text-yellow-800">⚠️ Important</div>
+                        <div class="text-yellow-700 text-sm">Only upload official firmware files (.bin). Do not interrupt power supply during update process.</div>
+                    </div>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <i data-lucide="upload" class="w-12 h-12 text-gray-400 mx-auto mb-4"></i>
+                        <p class="text-gray-600 mb-2">Drag & drop firmware file (.bin) here</p>
+                        <p class="text-sm text-gray-500">or click to browse files</p>
+                        <button onclick="showDemoNotification('This is a demo - firmware upload not available', 'info')" class="mt-4 bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            Browse Files (Demo)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Information -->
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl shadow-xl border border-gray-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="info" class="w-6 h-6 text-blue-500"></i>
                     About This Demo
                 </h3>
                 <div class="space-y-3">
-                    <p class="text-gray-600">This is a static demonstration of the Henny Smart Chicken Feeder web interface.</p>
-                    <div class="bg-white rounded-lg p-4 border border-blue-200">
-                        <h4 class="font-semibold text-gray-800 mb-2">Key Features:</h4>
+                    <p class="text-gray-600">This is a complete demonstration of the Henny Smart Chicken Feeder web interface, showing all features and configuration options.</p>
+                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                        <h4 class="font-semibold text-gray-800 mb-2">Key Features Demonstrated:</h4>
                         <ul class="text-sm text-gray-600 space-y-1">
-                            <li>• Configurable feeding schedules (1-8 times per day)</li>
-                            <li>• Sunrise/sunset aware timing</li>
-                            <li>• Mobile-first responsive design</li>
-                            <li>• Real-time feed consumption tracking</li>
-                            <li>• Over-the-air firmware updates</li>
+                            <li>• Configurable feeding schedules with sunrise/sunset awareness</li>
+                            <li>• Real-time feeding status and consumption tracking</li>
+                            <li>• Motor calibration and testing interface</li>
+                            <li>• Complete system configuration (WiFi, timezone, etc.)</li>
+                            <li>• Over-the-air firmware update interface</li>
                             <li>• Multi-language support (English/German)</li>
+                            <li>• Mobile-first responsive design</li>
                         </ul>
                     </div>
                     <div class="flex gap-3">
                         <a href="https://github.com/mneuhaus/henny" class="bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            <i data-lucide="github" class="w-4 h-4 inline mr-2"></i>
                             View Source Code
                         </a>
-                        <a href="#" onclick="toggleLanguageDemo()" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                            Toggle Language Demo
+                        <a href="https://github.com/mneuhaus/henny#readme" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+                            <i data-lucide="book-open" class="w-4 h-4 inline mr-2"></i>
+                            Documentation
                         </a>
                     </div>
                 </div>
@@ -258,6 +352,16 @@
     </div>
 
     <script>
+        // Current settings
+        let currentSettings = {
+            chickens: 6,
+            feedAmount: 120,
+            frequency: 3,
+            sunriseOffset: 2,
+            sunsetOffset: 2,
+            language: 'en'
+        };
+
         function toggleSettings() {
             const panel = document.getElementById('settings-panel');
             const dashboard = document.getElementById('dashboard-grid');
@@ -268,22 +372,98 @@
         
         function updateChickenDisplay(value) {
             document.getElementById('chickenCountDisplay').textContent = value;
+            document.getElementById('status-chickens').textContent = value;
+            currentSettings.chickens = parseInt(value);
+            updateFeedCalculations();
         }
         
         function updateFeedAmountDisplay(value) {
             document.getElementById('feedAmountDisplay').textContent = value;
+            currentSettings.feedAmount = parseInt(value);
+            updateFeedCalculations();
         }
         
         function updateFeedFrequencyDisplay(value) {
             document.getElementById('feedFrequencyDisplay').textContent = value;
+            currentSettings.frequency = parseInt(value);
+            updateFeedingSchedule();
+            updateFeedCalculations();
         }
         
         function updateSunriseOffsetDisplay(value) {
             document.getElementById('sunriseOffsetDisplay').textContent = value;
+            currentSettings.sunriseOffset = parseInt(value);
+            updateFeedingSchedule();
         }
         
         function updateSunsetOffsetDisplay(value) {
             document.getElementById('sunsetOffsetDisplay').textContent = value;
+            currentSettings.sunsetOffset = parseInt(value);
+            updateFeedingSchedule();
+        }
+
+        function updateFeedCalculations() {
+            const dailyTotal = currentSettings.chickens * currentSettings.feedAmount;
+            const monthlyTotal = (dailyTotal * 30 / 1000).toFixed(1);
+            
+            document.getElementById('status-daily').textContent = dailyTotal + 'g';
+            document.getElementById('status-monthly').textContent = monthlyTotal + 'kg';
+        }
+
+        function updateFeedingSchedule() {
+            const container = document.getElementById('feeding-schedule');
+            container.innerHTML = '';
+            
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            
+            // Calculate sunrise and sunset (simplified)
+            const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+            const angle = (dayOfYear - 172) * 2.0 * Math.PI / 365.0;
+            const sunriseHour = Math.floor(7.0 - 1.5 * Math.cos(angle));
+            const sunsetHour = Math.floor(19.0 + 2.5 * Math.cos(angle));
+            
+            const startHour = sunriseHour + currentSettings.sunriseOffset;
+            const endHour = sunsetHour - currentSettings.sunsetOffset;
+            const totalHours = Math.max(1, endHour - startHour);
+            
+            const dailyTotal = currentSettings.chickens * currentSettings.feedAmount;
+            const perFeeding = Math.round(dailyTotal / currentSettings.frequency);
+            const runtimeSeconds = Math.round(perFeeding / 5); // Assume 5g/second
+            
+            for (let i = 0; i < currentSettings.frequency; i++) {
+                const position = currentSettings.frequency === 1 ? 0.5 : i / (currentSettings.frequency - 1);
+                const hour = Math.floor(startHour + (totalHours * position));
+                const minute = 0;
+                
+                const timeStr = hour.toString().padStart(2, '0') + ':' + minute.toString().padStart(2, '0');
+                const feedingTime = hour * 100 + minute;
+                const currentTime = currentHour * 100 + currentMinute;
+                
+                let status, statusClass;
+                if (feedingTime < currentTime - 5) {
+                    status = 'Completed';
+                    statusClass = 'bg-green-100 text-green-800';
+                } else if (feedingTime <= currentTime + 5 && feedingTime >= currentTime - 5) {
+                    status = 'Pending';
+                    statusClass = 'bg-yellow-100 text-yellow-800';
+                } else {
+                    status = 'Scheduled';
+                    statusClass = 'bg-gray-100 text-gray-600';
+                }
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="text-gray-600 font-medium text-right py-2 pr-3">${timeStr}</td>
+                    <td class="text-xs text-gray-500 font-medium text-center py-2 px-3">${perFeeding}g</td>
+                    <td class="text-xs text-gray-400 font-medium text-center py-2 px-3">${runtimeSeconds}s</td>
+                    <td class="py-2 pl-3">
+                        <span class="text-sm ${statusClass} px-3 py-1 rounded-full">${status}</span>
+                    </td>
+                `;
+                container.appendChild(row);
+            }
         }
         
         function toggleLanguageDemo() {
@@ -292,31 +472,46 @@
             const newLang = currentLang === 'EN' ? 'DE' : 'EN';
             langBtn.querySelector('span').textContent = newLang;
             
-            // Simple demo notification
+            showDemoNotification(`Language switched to ${newLang} (Demo only)`, 'info');
+        }
+        
+        function showDemoNotification(message, type) {
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            
             const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-            notification.textContent = `Language switched to ${newLang} (Demo only)`;
+            notification.className = `fixed top-4 right-4 ${colors[type]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+            notification.textContent = message;
+            
             document.body.appendChild(notification);
             
-            setTimeout(() => document.body.removeChild(notification), 3000);
+            setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
         }
         
-        // Update time display
+        // Update time displays
         function updateTime() {
             const now = new Date();
-            document.getElementById('current-time').textContent = 
-                now.getHours().toString().padStart(2, '0') + ':' + 
-                now.getMinutes().toString().padStart(2, '0');
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + 
+                          now.getMinutes().toString().padStart(2, '0');
+            
+            document.getElementById('current-time').textContent = timeStr;
+            document.getElementById('timezone-current-time').textContent = timeStr + ' (CEST)';
         }
         
-        // Initialize
+        // Initialize everything
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
             updateTime();
+            updateFeedingSchedule();
+            updateFeedCalculations();
             setInterval(updateTime, 60000); // Update every minute
-            
-            // Add event listeners
-            document.getElementById('settings-btn').addEventListener('click', toggleSettings);
         });
     </script>
 </body>
