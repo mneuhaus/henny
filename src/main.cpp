@@ -132,8 +132,8 @@ private:
     }
     
 public:
-    float getDailyFeedAmount(int adultChickens) {
-        float total = adultChickens * 120.0;
+    float getDailyFeedAmount(int adultChickens, int gramsPerChicken) {
+        float total = adultChickens * gramsPerChicken;
         
         int month = 0;
         struct tm timeinfo;
@@ -189,7 +189,7 @@ public:
         return adjustedSchedule;
     }
     
-    bool shouldFeedNow(float &feedAmount, int adultChickens) {
+    bool shouldFeedNow(float &feedAmount, int adultChickens, int gramsPerChicken) {
         struct tm timeinfo;
         if (!getLocalTime(&timeinfo)) {
             return false;
@@ -203,7 +203,7 @@ public:
         
         int scheduleCount;
         FeedingTime* schedule = getCurrentSchedule(scheduleCount);
-        float dailyTotal = getDailyFeedAmount(adultChickens);
+        float dailyTotal = getDailyFeedAmount(adultChickens, gramsPerChicken);
         float perFeeding = dailyTotal / scheduleCount;
         
         for (int i = 0; i < scheduleCount; i++) {
@@ -243,6 +243,7 @@ Spreader spreader;
 Scheduler scheduler;
 
 int adultChickens = 6;
+int feedAmountPerChicken = 120; // grams per day
 
 unsigned long buttonPressStart = 0;
 bool buttonPressed = false;
@@ -264,7 +265,7 @@ String generateHTML() {
             height: 20px;
             width: 20px;
             border-radius: 50%;
-            background: #16a34a;
+            background: #4ade80;
             cursor: pointer;
             box-shadow: 0 0 2px 0 #555;
         }
@@ -272,7 +273,7 @@ String generateHTML() {
             height: 20px;
             width: 20px;
             border-radius: 50%;
-            background: #16a34a;
+            background: #4ade80;
             cursor: pointer;
             border: none;
             box-shadow: 0 0 2px 0 #555;
@@ -283,30 +284,41 @@ String generateHTML() {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#16a34a',
-                        secondary: '#059669',
+                        primary: '#4ade80',
+                        secondary: '#22c55e',
+                        accent: '#86efac',
+                        sage: '#94a3b8',
+                        'green-soft': '#ecfdf5',
+                        'green-card': '#6ee7b7'
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
+<body class="min-h-screen" style="background: #415554;">
     <div class="container mx-auto px-4 py-8 max-w-4xl">
         <!-- Header -->
-        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div class="flex items-center justify-between">
+        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-xl p-6 mb-6 relative overflow-hidden">
+            <!-- Decorative elements -->
+            <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+            <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-12 -translate-x-12"></div>
+            <div class="absolute top-1/2 right-1/4 w-6 h-6 bg-white/20 rounded-full"></div>
+            <div class="absolute top-1/4 right-1/3 w-3 h-3 bg-white/15 rounded-full"></div>
+            
+            <div class="flex items-center justify-between relative z-10">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                        <i data-lucide="bird" class="w-8 h-8 text-primary"></i>
+                    <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+                        <i data-lucide="bird" class="w-8 h-8 text-emerald-200"></i>
                         Henny
                     </h1>
+                    <p class="text-emerald-100 text-sm mt-1">Intelligente H&uuml;hnerf&uuml;tterung</p>
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="testMotor()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors" title="Motor Test (3s)">
+                <div class="flex gap-3">
+                    <button onclick="testMotor()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Motor Test (3s)">
                         <i data-lucide="zap" class="w-5 h-5"></i>
                     </button>
-                    <button onclick="toggleSettings()" class="bg-gray-500 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors" title="Einstellungen">
+                    <button onclick="toggleSettings()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Einstellungen">
                         <i data-lucide="settings" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -316,7 +328,7 @@ String generateHTML() {
         <!-- Dashboard Grid -->
         <div id="dashboard-grid" class="grid md:grid-cols-2 gap-6 mb-8">
             <!-- System Status Card -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">System-Status</h3>
                     <i data-lucide="activity" class="w-6 h-6 text-gray-500"></i>
@@ -342,30 +354,38 @@ String generateHTML() {
             </div>
 
             <!-- Today's Feeding Schedule -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">Heutige F&uuml;tterungszeiten</h3>
                     <i data-lucide="calendar" class="w-6 h-6 text-gray-500"></i>
                 </div>
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center border-b border-gray-100 pb-2">
-                        <span class="text-gray-500 text-sm flex items-center gap-1">
-                            <i data-lucide="sunrise" class="w-4 h-4"></i>
-                            Sonnenaufgang
-                        </span>
-                        <span class="text-gray-500 text-sm">{SUNRISE}</span>
-                    </div>
-                    <div id="feeding-schedule">
-                        <!-- This will be populated by JavaScript -->
-                    </div>
-                    <div class="flex justify-between items-center border-t border-gray-100 pt-2">
-                        <span class="text-gray-500 text-sm flex items-center gap-1">
-                            <i data-lucide="sunset" class="w-4 h-4"></i>
-                            Sonnenuntergang
-                        </span>
-                        <span class="text-gray-500 text-sm">{SUNSET}</span>
-                    </div>
-                </div>
+                <table class="w-full">
+                    <tbody>
+                        <tr class="border-b border-gray-100">
+                            <td class="text-gray-500 text-sm text-right py-2 pr-4">{SUNRISE}</td>
+                            <td class="text-gray-500 text-sm py-2 px-4">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="sunrise" class="w-4 h-4"></i>
+                                    Sonnenaufgang
+                                </span>
+                            </td>
+                            <td class="py-2 pl-4"></td>
+                        </tr>
+                        <tbody id="feeding-schedule">
+                            <!-- This will be populated by JavaScript -->
+                        </tbody>
+                        <tr class="border-t border-gray-100">
+                            <td class="text-gray-500 text-sm text-right py-2 pr-4">{SUNSET}</td>
+                            <td class="text-gray-500 text-sm py-2 px-4">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="sunset" class="w-4 h-4"></i>
+                                    Sonnenuntergang
+                                </span>
+                            </td>
+                            <td class="py-2 pl-4"></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -373,7 +393,7 @@ String generateHTML() {
         <!-- Settings Panel (Initially Hidden) -->
         <div id="settings-panel" class="hidden space-y-6">
             <!-- Configuration -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="bird" class="w-6 h-6 text-gray-500"></i>
                     H&uuml;hner-Konfiguration
@@ -385,6 +405,12 @@ String generateHTML() {
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateChickenDisplay(this.value)">
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Futter pro Huhn/Tag: <span id="feedAmountDisplay">{FEED_AMOUNT}</span>g</label>
+                        <input type="range" id="feedAmount" min="80" max="200" value="{FEED_AMOUNT}"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                               oninput="updateFeedAmountDisplay(this.value)">
+                    </div>
                     <div class="flex justify-center">
                         <button onclick="updateConfig()" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-6 rounded-lg transition-colors">
                             Aktualisieren
@@ -394,7 +420,7 @@ String generateHTML() {
             </div>
 
             <!-- Calibration -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="scale" class="w-6 h-6 text-gray-500"></i>
                     Kalibrierung
@@ -407,10 +433,10 @@ String generateHTML() {
                             <input type="number" id="calValue" placeholder="Ausgegebene Gramm" step="0.1"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                         </div>
-                        <button onclick="calibrate()" class="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        <button onclick="calibrate()" class="bg-slate-500 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
                             Test starten
                         </button>
-                        <button onclick="setCalibration()" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        <button onclick="setCalibration()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
                             Kalibrierung speichern
                         </button>
                     </div>
@@ -418,7 +444,7 @@ String generateHTML() {
             </div>
 
             <!-- Timezone Configuration -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="bg-gradient-to-br from-white to-teal-50 rounded-2xl shadow-xl border border-teal-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="clock" class="w-6 h-6 text-gray-500"></i>
                     Zeitzone
@@ -451,7 +477,7 @@ String generateHTML() {
             </div>
 
             <!-- WiFi Configuration -->
-            <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl border border-blue-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="wifi" class="w-6 h-6 text-gray-500"></i>
                     WLAN-Konfiguration
@@ -526,9 +552,10 @@ String generateHTML() {
         
         async function updateConfig() {
             const adults = document.getElementById('adultCount').value;
-            if (adults >= 0) {
+            const feedAmount = document.getElementById('feedAmount').value;
+            if (adults >= 0 && feedAmount >= 80 && feedAmount <= 200) {
                 try {
-                    await fetch('/config?adults=' + adults);
+                    await fetch('/config?adults=' + adults + '&feedAmount=' + feedAmount);
                     showNotification('Konfiguration aktualisiert!', 'success');
                     setTimeout(() => location.reload(), 1500);
                 } catch (error) {
@@ -601,6 +628,10 @@ String generateHTML() {
             document.getElementById('chickenCountDisplay').textContent = value;
         }
         
+        function updateFeedAmountDisplay(value) {
+            document.getElementById('feedAmountDisplay').textContent = value;
+        }
+        
         function updateFeedingSchedule() {
             // Get current time
             const now = new Date();
@@ -625,9 +656,10 @@ String generateHTML() {
                 currentSchedule = schedules.spring;
             }
             
-            // Calculate feed amount per feeding (120g per chicken / number of feedings)
+            // Calculate feed amount per feeding
             const adultChickens = {ADULTS};
-            const dailyTotal = adultChickens * 120;
+            const feedPerChicken = {FEED_AMOUNT};
+            const dailyTotal = adultChickens * feedPerChicken;
             const perFeeding = Math.round(dailyTotal / currentSchedule.length);
             
             // Generate schedule HTML
@@ -652,16 +684,15 @@ String generateHTML() {
                 
                 const timeStr = feeding.hour.toString().padStart(2, '0') + ':' + feeding.minute.toString().padStart(2, '0');
                 
-                const feedingDiv = document.createElement('div');
-                feedingDiv.className = 'flex justify-between items-center';
-                feedingDiv.innerHTML = `
-                    <span class="text-gray-600">${timeStr}</span>
-                    <div class="flex gap-2 items-center">
-                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${perFeeding}g</span>
-                        <span class="text-sm ${statusClass} px-2 py-1 rounded">${status}</span>
-                    </div>
+                const feedingRow = document.createElement('tr');
+                feedingRow.innerHTML = `
+                    <td class="text-gray-600 font-medium text-right py-2 pr-4">${timeStr}</td>
+                    <td class="text-xs text-gray-500 font-medium text-center py-2 px-4">${perFeeding}g</td>
+                    <td class="py-2 pl-4">
+                        <span class="text-sm ${statusClass} px-3 py-1 rounded-full">${status}</span>
+                    </td>
                 `;
-                scheduleContainer.appendChild(feedingDiv);
+                scheduleContainer.appendChild(feedingRow);
             });
         }
         
@@ -688,6 +719,7 @@ String generateHTML() {
     
     // Replace placeholders
     html.replace("{ADULTS}", String(adultChickens));
+    html.replace("{FEED_AMOUNT}", String(feedAmountPerChicken));
     html.replace("{CALIBRATION}", String(spreader.getCalibration()));
     html.replace("{WIFI_NETWORK}", WiFi.isConnected() ? WiFi.SSID() : "AP-Modus");
     html.replace("{WIFI_INFO}", WiFi.isConnected() ? WiFi.SSID() + " (Verbunden)" : "AP-Modus: Henny-Setup");
@@ -733,12 +765,24 @@ void handleSetCalibration() {
 }
 
 void handleConfig() {
+    bool updated = false;
+    
     if (server.hasArg("adults")) {
         adultChickens = server.arg("adults").toInt();
         preferences.putInt("adults", adultChickens);
+        updated = true;
+    }
+    
+    if (server.hasArg("feedAmount")) {
+        feedAmountPerChicken = server.arg("feedAmount").toInt();
+        preferences.putInt("feedAmount", feedAmountPerChicken);
+        updated = true;
+    }
+    
+    if (updated) {
         server.send(200, "text/plain", "OK");
     } else {
-        server.send(400, "text/plain", "Missing adults");
+        server.send(400, "text/plain", "Missing parameters");
     }
 }
 
@@ -793,6 +837,7 @@ void setup() {
     
     preferences.begin("henny", false);
     adultChickens = preferences.getInt("adults", 6);
+    feedAmountPerChicken = preferences.getInt("feedAmount", 120);
     spreader.setCalibration(preferences.getFloat("cal", 50.0));
     
     WiFi.begin(preferences.getString("ssid", "").c_str(), 
@@ -869,7 +914,7 @@ void loop() {
         lastCheck = millis();
         
         float feedAmount;
-        if (scheduler.shouldFeedNow(feedAmount, adultChickens)) {
+        if (scheduler.shouldFeedNow(feedAmount, adultChickens, feedAmountPerChicken)) {
             spreader.spreadFeed(feedAmount);
         }
     }
