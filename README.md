@@ -2,6 +2,8 @@
 
 Intelligent ESP32-S3 based automatic chicken feeder with modern web interface, configurable schedules, and over-the-air updates.
 
+**[🌐 Live Demo](https://mneuhaus.github.io/henny/)** - Try the web interface
+
 ## Key Features
 
 - **Configurable Feeding**: 1-8 times per day with sunrise/sunset awareness
