@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <Update.h>
+#include <ArduinoOTA.h>
 #include <time.h>
 #include <Preferences.h>
 #include <math.h>
@@ -108,7 +110,7 @@ private:
     FeedingTime winterSchedule[3] = {{8,0}, {13,0}, {17,0}};
     FeedingTime springSchedule[3] = {{7,0}, {12,0}, {17,0}};
     
-    bool fedToday[4] = {false, false, false, false};
+    bool fedToday[8] = {false, false, false, false, false, false, false, false};
     int lastFeedDay = -1;
     
     // Calculate sunset time based on day of year (approximate for Central Europe)
@@ -148,48 +150,54 @@ public:
         return total;
     }
     
-    FeedingTime* getCurrentSchedule(int &count) {
+    FeedingTime* getCurrentSchedule(int &count, int frequency, int sunriseOff, int sunsetOff) {
         struct tm timeinfo;
         if (!getLocalTime(&timeinfo)) {
-            count = 3;
-            return springSchedule; // Fallback
+            count = frequency;
+            // Generate fallback schedule
+            static FeedingTime fallbackSchedule[8];
+            for (int i = 0; i < frequency; i++) {
+                fallbackSchedule[i].hour = 8 + (i * 10 / frequency);
+                fallbackSchedule[i].minute = 0;
+            }
+            return fallbackSchedule;
         }
         
-        int month = timeinfo.tm_mon + 1;
         int dayOfYear = timeinfo.tm_yday;
+        int sunriseHour = getSunriseHour(dayOfYear);
         int sunsetHour = getSunsetHour(dayOfYear);
-        int maxFeedingHour = sunsetHour - 2; // 2 hours before sunset
         
-        FeedingTime* baseSchedule;
-        int baseCount;
+        // Generate schedule based on frequency
+        static FeedingTime dynamicSchedule[8];
+        count = frequency;
         
-        if (month >= 6 && month <= 8) {
-            baseSchedule = summerSchedule;
-            baseCount = 4;
-        } else if (month == 12 || month <= 2) {
-            baseSchedule = winterSchedule;
-            baseCount = 3;
-        } else {
-            baseSchedule = springSchedule;
-            baseCount = 3;
+        // Calculate feeding times between sunrise+offset and sunset-offset
+        int startHour = sunriseHour + sunriseOff;
+        int endHour = sunsetHour - sunsetOff;
+        int totalHours = endHour - startHour;
+        
+        // Ensure we have at least 1 hour window
+        if (totalHours < 1) {
+            startHour = sunriseHour + 1;
+            endHour = sunsetHour - 1;
+            totalHours = endHour - startHour;
         }
         
-        // Adjust last feeding time if it's too close to sunset
-        static FeedingTime adjustedSchedule[4];
-        for (int i = 0; i < baseCount; i++) {
-            adjustedSchedule[i] = baseSchedule[i];
-            // If last feeding is within 2 hours of sunset, move it earlier
-            if (i == baseCount - 1 && adjustedSchedule[i].hour >= maxFeedingHour) {
-                adjustedSchedule[i].hour = maxFeedingHour;
-                adjustedSchedule[i].minute = 0;
+        if (frequency == 1) {
+            dynamicSchedule[0].hour = startHour + (totalHours / 2);
+            dynamicSchedule[0].minute = 0;
+        } else {
+            for (int i = 0; i < frequency; i++) {
+                float position = (float)i / (frequency - 1);
+                dynamicSchedule[i].hour = startHour + (int)(totalHours * position);
+                dynamicSchedule[i].minute = 0;
             }
         }
         
-        count = baseCount;
-        return adjustedSchedule;
+        return dynamicSchedule;
     }
     
-    bool shouldFeedNow(float &feedAmount, int adultChickens, int gramsPerChicken) {
+    bool shouldFeedNow(float &feedAmount, int adultChickens, int gramsPerChicken, int frequency, int sunriseOff, int sunsetOff) {
         struct tm timeinfo;
         if (!getLocalTime(&timeinfo)) {
             return false;
@@ -197,12 +205,12 @@ public:
         
         int currentDay = timeinfo.tm_yday;
         if (currentDay != lastFeedDay) {
-            memset(fedToday, false, sizeof(fedToday));
+            for (int i = 0; i < 8; i++) fedToday[i] = false; // Clear all slots
             lastFeedDay = currentDay;
         }
         
         int scheduleCount;
-        FeedingTime* schedule = getCurrentSchedule(scheduleCount);
+        FeedingTime* schedule = getCurrentSchedule(scheduleCount, frequency, sunriseOff, sunsetOff);
         float dailyTotal = getDailyFeedAmount(adultChickens, gramsPerChicken);
         float perFeeding = dailyTotal / scheduleCount;
         
@@ -244,6 +252,9 @@ Scheduler scheduler;
 
 int adultChickens = 6;
 int feedAmountPerChicken = 120; // grams per day
+int feedFrequency = 3; // times per day
+int sunriseOffset = 2; // hours after sunrise
+int sunsetOffset = 2; // hours before sunset
 
 unsigned long buttonPressStart = 0;
 bool buttonPressed = false;
@@ -315,10 +326,10 @@ String generateHTML() {
                     <p class="text-emerald-100 text-sm mt-1">Intelligente H&uuml;hnerf&uuml;tterung</p>
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="testMotor()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Motor Test (3s)">
+                    <button id="test-motor-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Motor Test (3s)">
                         <i data-lucide="zap" class="w-5 h-5"></i>
                     </button>
-                    <button onclick="toggleSettings()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Einstellungen">
+                    <button id="settings-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Einstellungen">
                         <i data-lucide="settings" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -327,8 +338,45 @@ String generateHTML() {
 
         <!-- Dashboard Grid -->
         <div id="dashboard-grid" class="grid md:grid-cols-2 gap-6 mb-8">
+            <!-- Today's Feeding Schedule -->
+            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6 md:order-2">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Heutige F&uuml;tterungszeiten</h3>
+                    <i data-lucide="calendar" class="w-6 h-6 text-gray-500"></i>
+                </div>
+                <table class="w-full">
+                    <tbody>
+                        <tr class="border-b border-gray-100">
+                            <td class="text-gray-500 text-sm text-right py-2 pr-3">{SUNRISE}</td>
+                            <td class="text-gray-500 text-sm py-2 px-3">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="sunrise" class="w-4 h-4"></i>
+                                    Sonnenaufgang
+                                </span>
+                            </td>
+                            <td class="py-2 px-3"></td>
+                            <td class="py-2 pl-3"></td>
+                        </tr>
+                        <tbody id="feeding-schedule">
+                            <!-- This will be populated by JavaScript -->
+                        </tbody>
+                        <tr class="border-t border-gray-100">
+                            <td class="text-gray-500 text-sm text-right py-2 pr-3">{SUNSET}</td>
+                            <td class="text-gray-500 text-sm py-2 px-3">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="sunset" class="w-4 h-4"></i>
+                                    Sonnenuntergang
+                                </span>
+                            </td>
+                            <td class="py-2 px-3"></td>
+                            <td class="py-2 pl-3"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <!-- System Status Card -->
-            <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6">
+            <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6 md:order-1">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-800">System-Status</h3>
                     <i data-lucide="activity" class="w-6 h-6 text-gray-500"></i>
@@ -350,42 +398,15 @@ String generateHTML() {
                         <span class="text-gray-600">Zeit</span>
                         <span class="font-medium" id="current-time">{CURRENT_TIME}</span>
                     </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Futter pro Tag</span>
+                        <span class="font-medium">{DAILY_FEED}g</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Futter pro Monat</span>
+                        <span class="font-medium">{MONTHLY_FEED}kg</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- Today's Feeding Schedule -->
-            <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Heutige F&uuml;tterungszeiten</h3>
-                    <i data-lucide="calendar" class="w-6 h-6 text-gray-500"></i>
-                </div>
-                <table class="w-full">
-                    <tbody>
-                        <tr class="border-b border-gray-100">
-                            <td class="text-gray-500 text-sm text-right py-2 pr-4">{SUNRISE}</td>
-                            <td class="text-gray-500 text-sm py-2 px-4">
-                                <span class="flex items-center gap-1">
-                                    <i data-lucide="sunrise" class="w-4 h-4"></i>
-                                    Sonnenaufgang
-                                </span>
-                            </td>
-                            <td class="py-2 pl-4"></td>
-                        </tr>
-                        <tbody id="feeding-schedule">
-                            <!-- This will be populated by JavaScript -->
-                        </tbody>
-                        <tr class="border-t border-gray-100">
-                            <td class="text-gray-500 text-sm text-right py-2 pr-4">{SUNSET}</td>
-                            <td class="text-gray-500 text-sm py-2 px-4">
-                                <span class="flex items-center gap-1">
-                                    <i data-lucide="sunset" class="w-4 h-4"></i>
-                                    Sonnenuntergang
-                                </span>
-                            </td>
-                            <td class="py-2 pl-4"></td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
 
@@ -411,8 +432,26 @@ String generateHTML() {
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateFeedAmountDisplay(this.value)">
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Fütterungen pro Tag: <span id="feedFrequencyDisplay">{FEED_FREQUENCY}</span></label>
+                        <input type="range" id="feedFrequency" min="1" max="8" value="{FEED_FREQUENCY}"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                               oninput="updateFeedFrequencyDisplay(this.value)">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Erste Fütterung: <span id="sunriseOffsetDisplay">{SUNRISE_OFFSET}</span>h nach Sonnenaufgang</label>
+                        <input type="range" id="sunriseOffset" min="1" max="4" value="{SUNRISE_OFFSET}"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                               oninput="updateSunriseOffsetDisplay(this.value)">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Letzte Fütterung: <span id="sunsetOffsetDisplay">{SUNSET_OFFSET}</span>h vor Sonnenuntergang</label>
+                        <input type="range" id="sunsetOffset" min="1" max="4" value="{SUNSET_OFFSET}"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                               oninput="updateSunsetOffsetDisplay(this.value)">
+                    </div>
                     <div class="flex justify-center">
-                        <button onclick="updateConfig()" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        <button id="update-config-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl">
                             Aktualisieren
                         </button>
                     </div>
@@ -433,10 +472,10 @@ String generateHTML() {
                             <input type="number" id="calValue" placeholder="Ausgegebene Gramm" step="0.1"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                         </div>
-                        <button onclick="calibrate()" class="bg-slate-500 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                        <button id="calibrate-btn" class="bg-slate-500 hover:bg-slate-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
                             Test starten
                         </button>
-                        <button onclick="setCalibration()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                        <button id="set-calibration-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl">
                             Kalibrierung speichern
                         </button>
                     </div>
@@ -468,7 +507,7 @@ String generateHTML() {
                             </select>
                         </div>
                         <div class="flex items-end">
-                            <button onclick="updateTimezone()" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                            <button id="update-timezone-btn" class="bg-primary hover:bg-secondary text-white font-medium py-2 px-6 rounded-lg transition-colors">
                                 Zeitzone speichern
                             </button>
                         </div>
@@ -499,9 +538,30 @@ String generateHTML() {
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
                         </div>
                     </div>
-                    <button onclick="updateWiFi()" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                    <button id="update-wifi-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
                         WLAN speichern & neustarten
                     </button>
+                </div>
+            </div>
+
+            <!-- Firmware Update -->
+            <div class="bg-gradient-to-br from-white to-purple-50 rounded-2xl shadow-xl border border-purple-200/30 p-6">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="download" class="w-6 h-6 text-gray-500"></i>
+                    Firmware-Update
+                </h3>
+                <div class="space-y-4">
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <div class="text-sm font-medium text-purple-800">Aktuelle Version</div>
+                        <div class="text-purple-600">Henny v2.0 - Built {BUILD_DATE}</div>
+                    </div>
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <div class="text-sm font-medium text-yellow-800">⚠️ Hinweis</div>
+                        <div class="text-yellow-700 text-sm">Laden Sie nur offizielle Firmware-Dateien (.bin) hoch. Während des Updates darf die Stromversorgung nicht unterbrochen werden.</div>
+                    </div>
+                    <a href="/update" class="inline-block bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        Firmware aktualisieren
+                    </a>
                 </div>
             </div>
         </div>
@@ -553,9 +613,12 @@ String generateHTML() {
         async function updateConfig() {
             const adults = document.getElementById('adultCount').value;
             const feedAmount = document.getElementById('feedAmount').value;
-            if (adults >= 0 && feedAmount >= 80 && feedAmount <= 200) {
+            const feedingFrequency = document.getElementById('feedFrequency').value;
+            const sunriseOffset = document.getElementById('sunriseOffset').value;
+            const sunsetOffset = document.getElementById('sunsetOffset').value;
+            if (adults >= 0 && feedAmount >= 80 && feedAmount <= 200 && feedingFrequency >= 1 && feedingFrequency <= 8 && sunriseOffset >= 1 && sunriseOffset <= 4 && sunsetOffset >= 1 && sunsetOffset <= 4) {
                 try {
-                    await fetch('/config?adults=' + adults + '&feedAmount=' + feedAmount);
+                    await fetch('/config?adults=' + adults + '&feedAmount=' + feedAmount + '&feedFrequency=' + feedingFrequency + '&sunriseOffset=' + sunriseOffset + '&sunsetOffset=' + sunsetOffset);
                     showNotification('Konfiguration aktualisiert!', 'success');
                     setTimeout(() => location.reload(), 1500);
                 } catch (error) {
@@ -621,7 +684,7 @@ String generateHTML() {
             setTimeout(() => {
                 notification.classList.add('translate-x-full');
                 setTimeout(() => document.body.removeChild(notification), 300);
-            }, 3000);
+            }, 1000);
         }
         
         function updateChickenDisplay(value) {
@@ -632,35 +695,61 @@ String generateHTML() {
             document.getElementById('feedAmountDisplay').textContent = value;
         }
         
+        function updateFeedFrequencyDisplay(value) {
+            document.getElementById('feedFrequencyDisplay').textContent = value;
+        }
+        
+        function updateSunriseOffsetDisplay(value) {
+            document.getElementById('sunriseOffsetDisplay').textContent = value;
+        }
+        
+        function updateSunsetOffsetDisplay(value) {
+            document.getElementById('sunsetOffsetDisplay').textContent = value;
+        }
+        
         function updateFeedingSchedule() {
             // Get current time
             const now = new Date();
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
             
-            // Mock schedule data - would come from server
-            const schedules = {
-                summer: [{hour: 6, minute: 0}, {hour: 10, minute: 0}, {hour: 15, minute: 0}, {hour: 19, minute: 0}],
-                winter: [{hour: 8, minute: 0}, {hour: 13, minute: 0}, {hour: 17, minute: 0}],
-                spring: [{hour: 7, minute: 0}, {hour: 12, minute: 0}, {hour: 17, minute: 0}]
-            };
+            // Generate schedule based on feeding frequency and sunrise/sunset offsets
+            const configuredFrequency = {FEED_FREQUENCY};
+            const sunriseOffsetHours = {SUNRISE_OFFSET};
+            const sunsetOffsetHours = {SUNSET_OFFSET};
+            let currentSchedule = [];
             
-            // Get current month and determine season
-            const month = now.getMonth() + 1;
-            let currentSchedule;
-            if (month >= 6 && month <= 8) {
-                currentSchedule = schedules.summer;
-            } else if (month === 12 || month <= 2) {
-                currentSchedule = schedules.winter;
+            // Calculate sunrise and sunset times (simplified for demo)
+            const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+            const angle = (dayOfYear - 172) * 2.0 * Math.PI / 365.0;
+            const sunriseHour = Math.floor(7.0 - 1.5 * Math.cos(angle)); // Between 5.5 and 8.5
+            const sunsetHour = Math.floor(19.0 + 2.5 * Math.cos(angle)); // Between 16.5 and 21.5
+            
+            // Generate feeding times based on offsets
+            const startHour = sunriseHour + sunriseOffsetHours;
+            const endHour = sunsetHour - sunsetOffsetHours;
+            const totalHours = Math.max(1, endHour - startHour); // Ensure at least 1 hour window
+            
+            if (configuredFrequency === 1) {
+                currentSchedule.push({hour: startHour + Math.floor(totalHours / 2), minute: 0});
             } else {
-                currentSchedule = schedules.spring;
+                for (let i = 0; i < configuredFrequency; i++) {
+                    const position = i / (configuredFrequency - 1);
+                    const hour = startHour + Math.floor(totalHours * position);
+                    currentSchedule.push({hour: hour, minute: 0});
+                }
             }
             
             // Calculate feed amount per feeding
             const adultChickens = {ADULTS};
             const feedPerChicken = {FEED_AMOUNT};
             const dailyTotal = adultChickens * feedPerChicken;
-            const perFeeding = Math.round(dailyTotal / currentSchedule.length);
+            const perFeeding = Math.round(dailyTotal / configuredFrequency);
+            
+            // Calculate runtime based on calibration (grams per 10 seconds)
+            const calibration = {CALIBRATION}; // grams per 10 seconds
+            const gramsPerSecond = calibration / 10;
+            const runtimeSeconds = Math.round(perFeeding / gramsPerSecond);
             
             // Generate schedule HTML
             const scheduleContainer = document.getElementById('feeding-schedule');
@@ -686,9 +775,10 @@ String generateHTML() {
                 
                 const feedingRow = document.createElement('tr');
                 feedingRow.innerHTML = `
-                    <td class="text-gray-600 font-medium text-right py-2 pr-4">${timeStr}</td>
-                    <td class="text-xs text-gray-500 font-medium text-center py-2 px-4">${perFeeding}g</td>
-                    <td class="py-2 pl-4">
+                    <td class="text-gray-600 font-medium text-right py-2 pr-3">${timeStr}</td>
+                    <td class="text-xs text-gray-500 font-medium text-center py-2 px-3">${perFeeding}g</td>
+                    <td class="text-xs text-gray-400 font-medium text-center py-2 px-3">${runtimeSeconds}s</td>
+                    <td class="py-2 pl-3">
                         <span class="text-sm ${statusClass} px-3 py-1 rounded-full">${status}</span>
                     </td>
                 `;
@@ -696,13 +786,36 @@ String generateHTML() {
             });
         }
         
-        // Initialize
-        updateFeedingSchedule();
-        
-        // Initialize Lucide icons
+        // Initialize everything when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Lucide icons
             lucide.createIcons();
+            
+            // Setup event listeners
+            document.getElementById('test-motor-btn').addEventListener('click', testMotor);
+            document.getElementById('settings-btn').addEventListener('click', toggleSettings);
+            document.getElementById('update-config-btn').addEventListener('click', updateConfig);
+            document.getElementById('calibrate-btn').addEventListener('click', calibrate);
+            document.getElementById('set-calibration-btn').addEventListener('click', setCalibration);
+            document.getElementById('update-timezone-btn').addEventListener('click', updateTimezone);
+            document.getElementById('update-wifi-btn').addEventListener('click', updateWiFi);
+            
+            // Update feeding schedule
+            updateFeedingSchedule();
         });
+        
+        // Fallback for immediate loading
+        if (document.readyState !== 'loading') {
+            lucide.createIcons();
+            document.getElementById('test-motor-btn')?.addEventListener('click', testMotor);
+            document.getElementById('settings-btn')?.addEventListener('click', toggleSettings);
+            document.getElementById('update-config-btn')?.addEventListener('click', updateConfig);
+            document.getElementById('calibrate-btn')?.addEventListener('click', calibrate);
+            document.getElementById('set-calibration-btn')?.addEventListener('click', setCalibration);
+            document.getElementById('update-timezone-btn')?.addEventListener('click', updateTimezone);
+            document.getElementById('update-wifi-btn')?.addEventListener('click', updateWiFi);
+            updateFeedingSchedule();
+        }
     </script>
 </body>
 </html>
@@ -717,15 +830,28 @@ String generateHTML() {
         currentTime = String(timeStr);
     }
     
+    // Calculate feed amounts
+    float dailyFeed = scheduler.getDailyFeedAmount(adultChickens, feedAmountPerChicken);
+    float monthlyFeed = dailyFeed * 30.0 / 1000.0; // Convert to kg
+    
+    // Get build date
+    String buildDate = String(__DATE__) + " " + String(__TIME__);
+    
     // Replace placeholders
     html.replace("{ADULTS}", String(adultChickens));
     html.replace("{FEED_AMOUNT}", String(feedAmountPerChicken));
+    html.replace("{FEED_FREQUENCY}", String(feedFrequency));
+    html.replace("{SUNRISE_OFFSET}", String(sunriseOffset));
+    html.replace("{SUNSET_OFFSET}", String(sunsetOffset));
     html.replace("{CALIBRATION}", String(spreader.getCalibration()));
     html.replace("{WIFI_NETWORK}", WiFi.isConnected() ? WiFi.SSID() : "AP-Modus");
     html.replace("{WIFI_INFO}", WiFi.isConnected() ? WiFi.SSID() + " (Verbunden)" : "AP-Modus: Henny-Setup");
     html.replace("{SUNRISE}", scheduler.getSunriseTime());
     html.replace("{SUNSET}", scheduler.getSunsetTime());
     html.replace("{CURRENT_TIME}", currentTime);
+    html.replace("{DAILY_FEED}", String((int)dailyFeed));
+    html.replace("{MONTHLY_FEED}", String(monthlyFeed, 1));
+    html.replace("{BUILD_DATE}", buildDate);
     
     return html;
 }
@@ -779,6 +905,24 @@ void handleConfig() {
         updated = true;
     }
     
+    if (server.hasArg("feedFrequency")) {
+        feedFrequency = server.arg("feedFrequency").toInt();
+        preferences.putInt("feedFreq", feedFrequency);
+        updated = true;
+    }
+    
+    if (server.hasArg("sunriseOffset")) {
+        sunriseOffset = server.arg("sunriseOffset").toInt();
+        preferences.putInt("sunriseOff", sunriseOffset);
+        updated = true;
+    }
+    
+    if (server.hasArg("sunsetOffset")) {
+        sunsetOffset = server.arg("sunsetOffset").toInt();
+        preferences.putInt("sunsetOff", sunsetOffset);
+        updated = true;
+    }
+    
     if (updated) {
         server.send(200, "text/plain", "OK");
     } else {
@@ -825,6 +969,90 @@ void handleWiFiConfig() {
     }
 }
 
+void handleOTAUpload() {
+    String html = R"HTML(
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Henny - Firmware Update</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen" style="background: #415554;">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
+        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl shadow-xl p-6 mb-6">
+            <h1 class="text-3xl font-bold text-white text-center">Firmware Update</h1>
+            <p class="text-emerald-100 text-center mt-2">Henny Chicken Feeder</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <form method="POST" action="/update" enctype="multipart/form-data">
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Firmware-Datei (.bin)</label>
+                    <input type="file" name="update" accept=".bin" required
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <h3 class="text-yellow-800 font-medium mb-2">⚠️ Wichtige Hinweise:</h3>
+                    <ul class="text-yellow-700 text-sm space-y-1">
+                        <li>• Laden Sie nur offizielle .bin Dateien hoch</li>
+                        <li>• Unterbrechen Sie während des Updates nicht die Stromversorgung</li>
+                        <li>• Das Gerät startet nach dem Update automatisch neu</li>
+                        <li>• Der Vorgang dauert etwa 30-60 Sekunden</li>
+                    </ul>
+                </div>
+                
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-6 rounded-lg transition-colors">
+                    Firmware aktualisieren
+                </button>
+            </form>
+            
+            <div class="mt-6 text-center">
+                <a href="/" class="text-emerald-600 hover:text-emerald-700 font-medium">← Zurück zum Dashboard</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+)HTML";
+    
+    server.send(200, "text/html", html);
+}
+
+void handleOTAUpdate() {
+    HTTPUpload& upload = server.upload();
+    
+    if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("Update Start: %s\n", upload.filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+            Update.printError(Serial);
+        }
+    } else if (upload.status == UPLOAD_FILE_END) {
+        if (Update.end(true)) {
+            Serial.printf("Update Success: %uB\n", upload.totalSize);
+        } else {
+            Update.printError(Serial);
+        }
+    }
+}
+
+void handleOTAUpdatePost() {
+    server.sendHeader("Connection", "close");
+    if (Update.hasError()) {
+        server.send(500, "text/html", "<h1>Update Failed!</h1><p>Check serial output for details.</p><a href='/update'>Try Again</a>");
+    } else {
+        server.send(200, "text/html", "<h1>Update Success!</h1><p>Device will restart in 3 seconds...</p><script>setTimeout(() => window.location.href='/', 5000);</script>");
+        delay(3000);
+        ESP.restart();
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     delay(2000); // Wait for USB-CDC to be ready
@@ -838,6 +1066,9 @@ void setup() {
     preferences.begin("henny", false);
     adultChickens = preferences.getInt("adults", 6);
     feedAmountPerChicken = preferences.getInt("feedAmount", 120);
+    feedFrequency = preferences.getInt("feedFreq", 3);
+    sunriseOffset = preferences.getInt("sunriseOff", 2);
+    sunsetOffset = preferences.getInt("sunsetOff", 2);
     spreader.setCalibration(preferences.getFloat("cal", 50.0));
     
     WiFi.begin(preferences.getString("ssid", "").c_str(), 
@@ -876,7 +1107,15 @@ void setup() {
     server.on("/config", handleConfig);
     server.on("/timezone", HTTP_POST, handleTimezoneConfig);
     server.on("/wifi", HTTP_POST, handleWiFiConfig);
+    server.on("/update", HTTP_GET, handleOTAUpload);
+    server.on("/update", HTTP_POST, handleOTAUpdatePost, handleOTAUpdate);
     server.begin();
+    
+    // Setup Arduino OTA
+    ArduinoOTA.setHostname("henny-feeder");
+    ArduinoOTA.setPassword("hennyfeeder");
+    ArduinoOTA.begin();
+    Serial.println("OTA Ready");
     
     Serial.println("Web server started");
 }
@@ -908,13 +1147,14 @@ void loop() {
     spreader.update();
     handleButton();
     server.handleClient();
+    ArduinoOTA.handle();
     
     static unsigned long lastCheck = 0;
     if (millis() - lastCheck > 30000) {
         lastCheck = millis();
         
         float feedAmount;
-        if (scheduler.shouldFeedNow(feedAmount, adultChickens, feedAmountPerChicken)) {
+        if (scheduler.shouldFeedNow(feedAmount, adultChickens, feedAmountPerChicken, feedFrequency, sunriseOffset, sunsetOffset)) {
             spreader.spreadFeed(feedAmount);
         }
     }
