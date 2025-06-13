@@ -3,6 +3,7 @@
 #include <WebServer.h>
 #include <Update.h>
 #include <ArduinoOTA.h>
+#include <ESPmDNS.h>
 #include <time.h>
 #include <Preferences.h>
 #include <math.h>
@@ -1366,11 +1367,31 @@ void setup() {
         Serial.println("\nConnected!");
         Serial.print("IP: ");
         Serial.println(WiFi.localIP());
+        
+        // Set up mDNS hostname
+        if (MDNS.begin("henny")) {
+            Serial.println("mDNS responder started");
+            Serial.println("You can now access the device at: http://henny.local");
+            
+            // Add service to mDNS-SD
+            MDNS.addService("http", "tcp", 80);
+            MDNS.addServiceTxt("http", "tcp", "model", "Henny Smart Chicken Feeder");
+            MDNS.addServiceTxt("http", "tcp", "version", "v2.0");
+        } else {
+            Serial.println("Error setting up mDNS responder!");
+        }
     } else {
         Serial.println("\nFailed to connect. Starting AP mode...");
         WiFi.softAP("Henny-Setup", "hennyfeeder");
         Serial.print("AP IP: ");
         Serial.println(WiFi.softAPIP());
+        
+        // Set up mDNS in AP mode too
+        if (MDNS.begin("henny")) {
+            Serial.println("mDNS responder started in AP mode");
+            Serial.println("You can access the device at: http://henny.local");
+            MDNS.addService("http", "tcp", 80);
+        }
     }
     
     configTime(0, 0, "pool.ntp.org");

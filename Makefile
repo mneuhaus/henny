@@ -9,15 +9,17 @@ help:
 	@echo ""
 	@echo "  build          - Build firmware"
 	@echo "  upload         - Upload via USB cable"
-	@echo "  upload-ota IP  - Upload via WiFi to IP address"
+	@echo "  upload-ota IP  - Upload via WiFi to IP address or hostname"
 	@echo "  flash IP       - Build and upload via WiFi"
+	@echo "  flash-hostname - Build and upload to henny.local"
 	@echo "  monitor        - Open serial monitor"
 	@echo "  clean          - Clean build files"
 	@echo "  ip             - Scan for Henny devices on network"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make upload-ota IP=192.168.1.100"
-	@echo "  make flash IP=192.168.1.100"
+	@echo "  make flash IP=henny.local"
+	@echo "  make flash-hostname"
 
 all: build upload
 
@@ -32,10 +34,10 @@ upload:
 	@echo "Uploading via USB..."
 	pio run -t upload
 
-# Upload via OTA (requires IP parameter)
+# Upload via OTA (accepts IP address or hostname)
 upload-ota:
 	@if [ -z "$(IP)" ]; then \
-		echo "Error: IP address required. Usage: make upload-ota IP=192.168.1.100"; \
+		echo "Error: IP address or hostname required. Usage: make upload-ota IP=192.168.1.100 or make upload-ota IP=henny.local"; \
 		exit 1; \
 	fi
 	@echo "Uploading to $(IP) via OTA..."
@@ -44,11 +46,16 @@ upload-ota:
 # Build and upload via OTA in one command
 flash:
 	@if [ -z "$(IP)" ]; then \
-		echo "Error: IP address required. Usage: make flash IP=192.168.1.100"; \
+		echo "Error: IP address or hostname required. Usage: make flash IP=192.168.1.100 or make flash IP=henny.local"; \
 		exit 1; \
 	fi
 	@echo "Building and uploading to $(IP)..."
 	@export HENNY_IP=$(IP) && pio run -e seeed_xiao_esp32s3_ota --target upload
+
+# Convenient hostname-based upload
+flash-hostname:
+	@echo "Building and uploading to henny.local..."
+	@export HENNY_IP=henny.local && pio run -e seeed_xiao_esp32s3_ota --target upload
 
 monitor:
 	@echo "Opening serial monitor (Ctrl+C to exit)..."

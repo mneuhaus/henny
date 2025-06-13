@@ -208,4 +208,6 @@
  /Users/mneuhaus/.platformio/packages/framework-arduinoespressif32/cores/esp32/MD5Builder.h \
  /Users/mneuhaus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_rom/include/esp_rom_md5.h \
  /Users/mneuhaus/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src/ArduinoOTA.h \
+ /Users/mneuhaus/.platformio/packages/framework-arduinoespressif32/libraries/ESPmDNS/src/ESPmDNS.h \
+ /Users/mneuhaus/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/mdns/include/mdns.h \
  /Users/mneuhaus/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src/Preferences.h

@@ -21,14 +21,16 @@ Intelligent ESP32-S3 based automatic chicken feeder with modern web interface, c
 make upload monitor
 
 # Wireless deployment (after setup)
-make ip                    # Find device
-make flash IP=192.168.1.100
+make flash IP=henny.local     # Use hostname
+make flash IP=192.168.1.100  # Or IP address
+make flash-hostname           # Quick hostname upload
 ```
 
 ### Setup
 1. Connect to "Henny-Setup" WiFi (password: hennyfeeder)
-2. Navigate to http://192.168.4.1
+2. Navigate to http://192.168.4.1 or http://henny.local
 3. Configure WiFi, feeding settings, and calibration
+4. Access via http://henny.local once connected to your network
 
 ## Hardware
 
@@ -57,6 +59,7 @@ GPIO 48 → Built-in LED
 make help              # Show all commands
 make upload            # USB upload
 make flash IP=x        # Wireless upload
+make flash-hostname    # Upload to henny.local
 make ip                # Find devices
 make monitor           # Serial console
 ```
