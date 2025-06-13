@@ -255,15 +255,76 @@ int feedAmountPerChicken = 120; // grams per day
 int feedFrequency = 3; // times per day
 int sunriseOffset = 2; // hours after sunrise
 int sunsetOffset = 2; // hours before sunset
+String language = "de"; // "de" or "en"
 
 unsigned long buttonPressStart = 0;
 bool buttonPressed = false;
 bool lastButtonState = HIGH;
 
+String getTranslation(String key, String lang) {
+    // German translations
+    if (lang == "de") {
+        if (key == "subtitle") return "Intelligente H&uuml;hnerf&uuml;tterung";
+        if (key == "feeding_schedule_title") return "Heutige F&uuml;tterungszeiten";
+        if (key == "sunrise_text") return "Sonnenaufgang";
+        if (key == "sunset_text") return "Sonnenuntergang";
+        if (key == "system_status_title") return "System-Status";
+        if (key == "adult_chickens_text") return "Erwachsene H&uuml;hner";
+        if (key == "calibration_text") return "Kalibrierung";
+        if (key == "time_text") return "Zeit";
+        if (key == "daily_feed_text") return "Futter pro Tag";
+        if (key == "monthly_feed_text") return "Futter pro Monat";
+        if (key == "chicken_config_title") return "H&uuml;hner-Konfiguration";
+        if (key == "adult_chickens_label") return "Erwachsene H&uuml;hner";
+        if (key == "feed_per_chicken_label") return "Futter pro Huhn/Tag";
+        if (key == "feedings_per_day_label") return "F&uuml;tterungen pro Tag";
+        if (key == "first_feeding_label") return "Erste F&uuml;tterung";
+        if (key == "last_feeding_label") return "Letzte F&uuml;tterung";
+        if (key == "after_sunrise_text") return "nach Sonnenaufgang";
+        if (key == "before_sunset_text") return "vor Sonnenuntergang";
+        if (key == "update_button_text") return "Aktualisieren";
+        if (key == "calibration_title") return "Kalibrierung";
+        if (key == "calibration_instruction") return "F&uuml;hren Sie einen 10-Sekunden-Kalibrierungstest durch, messen Sie dann die tats&auml;chlich ausgegebene Menge und geben Sie diese ein.";
+        if (key == "measured_amount_label") return "Gemessene Menge (g)";
+        if (key == "dispensed_grams_placeholder") return "Ausgegebene Gramm";
+        if (key == "start_test_button") return "Test starten";
+        if (key == "save_calibration_button") return "Kalibrierung speichern";
+    }
+    // English translations
+    else if (lang == "en") {
+        if (key == "subtitle") return "Intelligent Chicken Feeding";
+        if (key == "feeding_schedule_title") return "Today's Feeding Schedule";
+        if (key == "sunrise_text") return "Sunrise";
+        if (key == "sunset_text") return "Sunset";
+        if (key == "system_status_title") return "System Status";
+        if (key == "adult_chickens_text") return "Adult Chickens";
+        if (key == "calibration_text") return "Calibration";
+        if (key == "time_text") return "Time";
+        if (key == "daily_feed_text") return "Daily Feed";
+        if (key == "monthly_feed_text") return "Monthly Feed";
+        if (key == "chicken_config_title") return "Chicken Configuration";
+        if (key == "adult_chickens_label") return "Adult Chickens";
+        if (key == "feed_per_chicken_label") return "Feed per Chicken/Day";
+        if (key == "feedings_per_day_label") return "Feedings per Day";
+        if (key == "first_feeding_label") return "First Feeding";
+        if (key == "last_feeding_label") return "Last Feeding";
+        if (key == "after_sunrise_text") return "after sunrise";
+        if (key == "before_sunset_text") return "before sunset";
+        if (key == "update_button_text") return "Update";
+        if (key == "calibration_title") return "Calibration";
+        if (key == "calibration_instruction") return "Run a 10-second calibration test, then measure the actual dispensed amount and enter it below.";
+        if (key == "measured_amount_label") return "Measured Amount (g)";
+        if (key == "dispensed_grams_placeholder") return "Dispensed Grams";
+        if (key == "start_test_button") return "Start Test";
+        if (key == "save_calibration_button") return "Save Calibration";
+    }
+    return key; // Fallback
+}
+
 String generateHTML() {
     String html = R"HTML(
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{LANG}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -323,13 +384,16 @@ String generateHTML() {
                         <i data-lucide="bird" class="w-8 h-8 text-emerald-200"></i>
                         Henny
                     </h1>
-                    <p class="text-emerald-100 text-sm mt-1">Intelligente H&uuml;hnerf&uuml;tterung</p>
+                    <p class="text-emerald-100 text-sm mt-1">{SUBTITLE}</p>
                 </div>
                 <div class="flex gap-3">
                     <button id="test-motor-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Motor Test (3s)">
                         <i data-lucide="zap" class="w-5 h-5"></i>
                     </button>
-                    <button id="settings-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Einstellungen">
+                    <button id="language-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Language / Sprache">
+                        <span class="text-sm font-medium">{LANGUAGE_DISPLAY}</span>
+                    </button>
+                    <button id="settings-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Settings / Einstellungen">
                         <i data-lucide="settings" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -341,7 +405,7 @@ String generateHTML() {
             <!-- Today's Feeding Schedule -->
             <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6 md:order-2">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Heutige F&uuml;tterungszeiten</h3>
+                    <h3 class="text-lg font-semibold text-gray-800">{FEEDING_SCHEDULE_TITLE}</h3>
                     <i data-lucide="calendar" class="w-6 h-6 text-gray-500"></i>
                 </div>
                 <table class="w-full">
@@ -351,7 +415,7 @@ String generateHTML() {
                             <td class="text-gray-500 text-sm py-2 px-3">
                                 <span class="flex items-center gap-1">
                                     <i data-lucide="sunrise" class="w-4 h-4"></i>
-                                    Sonnenaufgang
+                                    {SUNRISE_TEXT}
                                 </span>
                             </td>
                             <td class="py-2 px-3"></td>
@@ -365,7 +429,7 @@ String generateHTML() {
                             <td class="text-gray-500 text-sm py-2 px-3">
                                 <span class="flex items-center gap-1">
                                     <i data-lucide="sunset" class="w-4 h-4"></i>
-                                    Sonnenuntergang
+                                    {SUNSET_TEXT}
                                 </span>
                             </td>
                             <td class="py-2 px-3"></td>
@@ -378,16 +442,16 @@ String generateHTML() {
             <!-- System Status Card -->
             <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6 md:order-1">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">System-Status</h3>
+                    <h3 class="text-lg font-semibold text-gray-800">{SYSTEM_STATUS_TITLE}</h3>
                     <i data-lucide="activity" class="w-6 h-6 text-gray-500"></i>
                 </div>
                 <div class="space-y-3">
                     <div class="flex justify-between">
-                        <span class="text-gray-600">Erwachsene H&uuml;hner</span>
+                        <span class="text-gray-600">{ADULT_CHICKENS_TEXT}</span>
                         <span class="font-medium" id="adults">{ADULTS}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">Kalibrierung</span>
+                        <span class="text-gray-600">{CALIBRATION_TEXT}</span>
                         <span class="font-medium" id="calibration">{CALIBRATION}g/10s</span>
                     </div>
                     <div class="flex justify-between">
@@ -395,15 +459,15 @@ String generateHTML() {
                         <span class="font-medium text-green-600" id="wifi-status">{WIFI_NETWORK}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">Zeit</span>
+                        <span class="text-gray-600">{TIME_TEXT}</span>
                         <span class="font-medium" id="current-time">{CURRENT_TIME}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">Futter pro Tag</span>
+                        <span class="text-gray-600">{DAILY_FEED_TEXT}</span>
                         <span class="font-medium">{DAILY_FEED}g</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-600">Futter pro Monat</span>
+                        <span class="text-gray-600">{MONTHLY_FEED_TEXT}</span>
                         <span class="font-medium">{MONTHLY_FEED}kg</span>
                     </div>
                 </div>
@@ -417,42 +481,42 @@ String generateHTML() {
             <div class="bg-gradient-to-br from-white to-green-soft rounded-2xl shadow-xl border border-green-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="bird" class="w-6 h-6 text-gray-500"></i>
-                    H&uuml;hner-Konfiguration
+                    {CHICKEN_CONFIG_TITLE}
                 </h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Erwachsene H&uuml;hner: <span id="chickenCountDisplay">{ADULTS}</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{ADULT_CHICKENS_LABEL}: <span id="chickenCountDisplay">{ADULTS}</span></label>
                         <input type="range" id="adultCount" min="0" max="30" value="{ADULTS}"
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateChickenDisplay(this.value)">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Futter pro Huhn/Tag: <span id="feedAmountDisplay">{FEED_AMOUNT}</span>g</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{FEED_PER_CHICKEN_LABEL}: <span id="feedAmountDisplay">{FEED_AMOUNT}</span>g</label>
                         <input type="range" id="feedAmount" min="80" max="200" value="{FEED_AMOUNT}"
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateFeedAmountDisplay(this.value)">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Fütterungen pro Tag: <span id="feedFrequencyDisplay">{FEED_FREQUENCY}</span></label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{FEEDINGS_PER_DAY_LABEL}: <span id="feedFrequencyDisplay">{FEED_FREQUENCY}</span></label>
                         <input type="range" id="feedFrequency" min="1" max="8" value="{FEED_FREQUENCY}"
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateFeedFrequencyDisplay(this.value)">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Erste Fütterung: <span id="sunriseOffsetDisplay">{SUNRISE_OFFSET}</span>h nach Sonnenaufgang</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{FIRST_FEEDING_LABEL}: <span id="sunriseOffsetDisplay">{SUNRISE_OFFSET}</span>h {AFTER_SUNRISE_TEXT}</label>
                         <input type="range" id="sunriseOffset" min="1" max="4" value="{SUNRISE_OFFSET}"
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateSunriseOffsetDisplay(this.value)">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Letzte Fütterung: <span id="sunsetOffsetDisplay">{SUNSET_OFFSET}</span>h vor Sonnenuntergang</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{LAST_FEEDING_LABEL}: <span id="sunsetOffsetDisplay">{SUNSET_OFFSET}</span>h {BEFORE_SUNSET_TEXT}</label>
                         <input type="range" id="sunsetOffset" min="1" max="4" value="{SUNSET_OFFSET}"
                                class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                                oninput="updateSunsetOffsetDisplay(this.value)">
                     </div>
                     <div class="flex justify-center">
                         <button id="update-config-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl">
-                            Aktualisieren
+                            {UPDATE_BUTTON_TEXT}
                         </button>
                     </div>
                 </div>
@@ -462,7 +526,7 @@ String generateHTML() {
             <div class="bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-xl border border-emerald-200/30 p-6">
                 <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <i data-lucide="scale" class="w-6 h-6 text-gray-500"></i>
-                    Kalibrierung
+                    {CALIBRATION_TITLE}
                 </h3>
                 <div class="space-y-4">
                     <p class="text-gray-600 text-sm">F&uuml;hren Sie einen 10-Sekunden-Kalibrierungstest durch, messen Sie dann die tats&auml;chlich ausgegebene Menge und geben Sie diese ein.</p>
@@ -568,6 +632,40 @@ String generateHTML() {
     </div>
 
     <script>
+        // Language definitions
+        const translations = {
+            de: {
+                motorTestStarted: 'Motor-Test gestartet (3 Sekunden)',
+                motorTestFailed: 'Motor-Test fehlgeschlagen',
+                calibrationStarted: 'Kalibrierung gestartet! Messen Sie die ausgegebene Menge und geben Sie diese unten ein.',
+                calibrationFailed: 'Kalibrierung fehlgeschlagen. Bitte erneut versuchen.',
+                calibrationUpdated: 'Kalibrierung aktualisiert!',
+                calibrationUpdateFailed: 'Kalibrierung konnte nicht aktualisiert werden.',
+                validCalibrationValue: 'Bitte geben Sie einen gültigen Kalibrierungswert ein.',
+                configUpdated: 'Konfiguration aktualisiert!',
+                configUpdateFailed: 'Konfiguration konnte nicht aktualisiert werden.',
+                completed: 'Erledigt',
+                pending: 'Ausstehend',
+                scheduled: 'Geplant'
+            },
+            en: {
+                motorTestStarted: 'Motor test started (3 seconds)',
+                motorTestFailed: 'Motor test failed',
+                calibrationStarted: 'Calibration started! Measure the dispensed amount and enter it below.',
+                calibrationFailed: 'Calibration failed. Please try again.',
+                calibrationUpdated: 'Calibration updated!',
+                calibrationUpdateFailed: 'Could not update calibration.',
+                validCalibrationValue: 'Please enter a valid calibration value.',
+                configUpdated: 'Configuration updated!',
+                configUpdateFailed: 'Could not update configuration.',
+                completed: 'Completed',
+                pending: 'Pending',
+                scheduled: 'Scheduled'
+            }
+        };
+        
+        const lang = translations['{LANGUAGE}'] || translations['de'];
+        
         function toggleSettings() {
             const panel = document.getElementById('settings-panel');
             const dashboard = document.getElementById('dashboard-grid');
@@ -579,9 +677,9 @@ String generateHTML() {
         async function testMotor() {
             try {
                 await fetch('/test-motor');
-                showNotification('Motor-Test gestartet (3 Sekunden)', 'info');
+                showNotification(lang.motorTestStarted, 'info');
             } catch (error) {
-                showNotification('Motor-Test fehlgeschlagen', 'error');
+                showNotification(lang.motorTestFailed, 'error');
             }
         }
 
@@ -589,9 +687,9 @@ String generateHTML() {
         async function calibrate() {
             try {
                 await fetch('/calibrate');
-                showNotification('Kalibrierung gestartet! Messen Sie die ausgegebene Menge und geben Sie diese unten ein.', 'info');
+                showNotification(lang.calibrationStarted, 'info');
             } catch (error) {
-                showNotification('Kalibrierung fehlgeschlagen. Bitte erneut versuchen.', 'error');
+                showNotification(lang.calibrationFailed, 'error');
             }
         }
         
@@ -600,13 +698,24 @@ String generateHTML() {
             if (value && value > 0) {
                 try {
                     await fetch('/setcal?value=' + value);
-                    showNotification('Kalibrierung aktualisiert!', 'success');
+                    showNotification(lang.calibrationUpdated, 'success');
                     setTimeout(() => location.reload(), 1500);
                 } catch (error) {
-                    showNotification('Kalibrierung konnte nicht aktualisiert werden.', 'error');
+                    showNotification(lang.calibrationUpdateFailed, 'error');
                 }
             } else {
-                showNotification('Bitte geben Sie einen gültigen Kalibrierungswert ein.', 'error');
+                showNotification(lang.validCalibrationValue, 'error');
+            }
+        }
+        
+        async function toggleLanguage() {
+            const currentLang = '{LANGUAGE}';
+            const newLang = currentLang === 'de' ? 'en' : 'de';
+            try {
+                await fetch('/config?language=' + newLang);
+                location.reload();
+            } catch (error) {
+                console.error('Language toggle failed:', error);
             }
         }
         
@@ -619,10 +728,10 @@ String generateHTML() {
             if (adults >= 0 && feedAmount >= 80 && feedAmount <= 200 && feedingFrequency >= 1 && feedingFrequency <= 8 && sunriseOffset >= 1 && sunriseOffset <= 4 && sunsetOffset >= 1 && sunsetOffset <= 4) {
                 try {
                     await fetch('/config?adults=' + adults + '&feedAmount=' + feedAmount + '&feedFrequency=' + feedingFrequency + '&sunriseOffset=' + sunriseOffset + '&sunsetOffset=' + sunsetOffset);
-                    showNotification('Konfiguration aktualisiert!', 'success');
+                    showNotification(lang.configUpdated, 'success');
                     setTimeout(() => location.reload(), 1500);
                 } catch (error) {
-                    showNotification('Konfiguration konnte nicht aktualisiert werden.', 'error');
+                    showNotification(lang.configUpdateFailed, 'error');
                 }
             }
         }
@@ -761,13 +870,13 @@ String generateHTML() {
                 
                 let status, statusClass;
                 if (feedingTime < currentTime - 5) {
-                    status = 'Erledigt';
+                    status = lang.completed;
                     statusClass = 'bg-green-100 text-green-800';
                 } else if (feedingTime <= currentTime + 5 && feedingTime >= currentTime - 5) {
-                    status = 'Ausstehend';
+                    status = lang.pending;
                     statusClass = 'bg-yellow-100 text-yellow-800';
                 } else {
-                    status = 'Geplant';
+                    status = lang.scheduled;
                     statusClass = 'bg-gray-100 text-gray-600';
                 }
                 
@@ -793,6 +902,7 @@ String generateHTML() {
             
             // Setup event listeners
             document.getElementById('test-motor-btn').addEventListener('click', testMotor);
+            document.getElementById('language-btn').addEventListener('click', toggleLanguage);
             document.getElementById('settings-btn').addEventListener('click', toggleSettings);
             document.getElementById('update-config-btn').addEventListener('click', updateConfig);
             document.getElementById('calibrate-btn').addEventListener('click', calibrate);
@@ -808,6 +918,7 @@ String generateHTML() {
         if (document.readyState !== 'loading') {
             lucide.createIcons();
             document.getElementById('test-motor-btn')?.addEventListener('click', testMotor);
+            document.getElementById('language-btn')?.addEventListener('click', toggleLanguage);
             document.getElementById('settings-btn')?.addEventListener('click', toggleSettings);
             document.getElementById('update-config-btn')?.addEventListener('click', updateConfig);
             document.getElementById('calibrate-btn')?.addEventListener('click', calibrate);
@@ -838,20 +949,50 @@ String generateHTML() {
     String buildDate = String(__DATE__) + " " + String(__TIME__);
     
     // Replace placeholders
+    html.replace("{LANG}", language);
+    html.replace("{LANGUAGE}", language);
     html.replace("{ADULTS}", String(adultChickens));
     html.replace("{FEED_AMOUNT}", String(feedAmountPerChicken));
     html.replace("{FEED_FREQUENCY}", String(feedFrequency));
     html.replace("{SUNRISE_OFFSET}", String(sunriseOffset));
     html.replace("{SUNSET_OFFSET}", String(sunsetOffset));
     html.replace("{CALIBRATION}", String(spreader.getCalibration()));
-    html.replace("{WIFI_NETWORK}", WiFi.isConnected() ? WiFi.SSID() : "AP-Modus");
-    html.replace("{WIFI_INFO}", WiFi.isConnected() ? WiFi.SSID() + " (Verbunden)" : "AP-Modus: Henny-Setup");
+    html.replace("{WIFI_NETWORK}", WiFi.isConnected() ? WiFi.SSID() : (language == "en" ? "AP Mode" : "AP-Modus"));
+    html.replace("{WIFI_INFO}", WiFi.isConnected() ? WiFi.SSID() + (language == "en" ? " (Connected)" : " (Verbunden)") : (language == "en" ? "AP Mode: Henny-Setup" : "AP-Modus: Henny-Setup"));
     html.replace("{SUNRISE}", scheduler.getSunriseTime());
     html.replace("{SUNSET}", scheduler.getSunsetTime());
     html.replace("{CURRENT_TIME}", currentTime);
     html.replace("{DAILY_FEED}", String((int)dailyFeed));
     html.replace("{MONTHLY_FEED}", String(monthlyFeed, 1));
     html.replace("{BUILD_DATE}", buildDate);
+    
+    // Replace translation placeholders
+    html.replace("{SUBTITLE}", getTranslation("subtitle", language));
+    html.replace("{FEEDING_SCHEDULE_TITLE}", getTranslation("feeding_schedule_title", language));
+    html.replace("{SUNRISE_TEXT}", getTranslation("sunrise_text", language));
+    html.replace("{SUNSET_TEXT}", getTranslation("sunset_text", language));
+    html.replace("{SYSTEM_STATUS_TITLE}", getTranslation("system_status_title", language));
+    html.replace("{ADULT_CHICKENS_TEXT}", getTranslation("adult_chickens_text", language));
+    html.replace("{CALIBRATION_TEXT}", getTranslation("calibration_text", language));
+    html.replace("{TIME_TEXT}", getTranslation("time_text", language));
+    html.replace("{DAILY_FEED_TEXT}", getTranslation("daily_feed_text", language));
+    html.replace("{MONTHLY_FEED_TEXT}", getTranslation("monthly_feed_text", language));
+    html.replace("{CHICKEN_CONFIG_TITLE}", getTranslation("chicken_config_title", language));
+    html.replace("{ADULT_CHICKENS_LABEL}", getTranslation("adult_chickens_label", language));
+    html.replace("{FEED_PER_CHICKEN_LABEL}", getTranslation("feed_per_chicken_label", language));
+    html.replace("{FEEDINGS_PER_DAY_LABEL}", getTranslation("feedings_per_day_label", language));
+    html.replace("{FIRST_FEEDING_LABEL}", getTranslation("first_feeding_label", language));
+    html.replace("{LAST_FEEDING_LABEL}", getTranslation("last_feeding_label", language));
+    html.replace("{AFTER_SUNRISE_TEXT}", getTranslation("after_sunrise_text", language));
+    html.replace("{BEFORE_SUNSET_TEXT}", getTranslation("before_sunset_text", language));
+    html.replace("{UPDATE_BUTTON_TEXT}", getTranslation("update_button_text", language));
+    html.replace("{CALIBRATION_TITLE}", getTranslation("calibration_title", language));
+    html.replace("{CALIBRATION_INSTRUCTION}", getTranslation("calibration_instruction", language));
+    html.replace("{MEASURED_AMOUNT_LABEL}", getTranslation("measured_amount_label", language));
+    html.replace("{DISPENSED_GRAMS_PLACEHOLDER}", getTranslation("dispensed_grams_placeholder", language));
+    html.replace("{START_TEST_BUTTON}", getTranslation("start_test_button", language));
+    html.replace("{SAVE_CALIBRATION_BUTTON}", getTranslation("save_calibration_button", language));
+    html.replace("{LANGUAGE_DISPLAY}", language.toUpperCase());
     
     return html;
 }
@@ -920,6 +1061,12 @@ void handleConfig() {
     if (server.hasArg("sunsetOffset")) {
         sunsetOffset = server.arg("sunsetOffset").toInt();
         preferences.putInt("sunsetOff", sunsetOffset);
+        updated = true;
+    }
+    
+    if (server.hasArg("language")) {
+        language = server.arg("language");
+        preferences.putString("lang", language);
         updated = true;
     }
     
@@ -1069,6 +1216,7 @@ void setup() {
     feedFrequency = preferences.getInt("feedFreq", 3);
     sunriseOffset = preferences.getInt("sunriseOff", 2);
     sunsetOffset = preferences.getInt("sunsetOff", 2);
+    language = preferences.getString("lang", "de");
     spreader.setCalibration(preferences.getFloat("cal", 50.0));
     
     WiFi.begin(preferences.getString("ssid", "").c_str(), 
