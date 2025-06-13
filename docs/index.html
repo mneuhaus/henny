@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Henny - Smart Chicken Feeder Demo</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Henny">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
@@ -75,6 +81,9 @@
                     </button>
                     <button id="language-btn" onclick="toggleLanguageDemo()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Language">
                         <span class="text-sm font-medium">EN</span>
+                    </button>
+                    <button id="install-btn" onclick="showInstallPrompt()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20 hidden" title="Install App">
+                        <i data-lucide="download" class="w-5 h-5"></i>
                     </button>
                     <button id="settings-btn" onclick="toggleSettings()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Settings">
                         <i data-lucide="settings" class="w-5 h-5"></i>
@@ -503,6 +512,50 @@
             
             document.getElementById('current-time').textContent = timeStr;
             document.getElementById('timezone-current-time').textContent = timeStr + ' (CEST)';
+        }
+        
+        // PWA Install functionality
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show install button
+            document.getElementById('install-btn').classList.remove('hidden');
+        });
+        
+        function showInstallPrompt() {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showDemoNotification('App installed successfully!', 'success');
+                    } else {
+                        showDemoNotification('App installation declined', 'info');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('install-btn').classList.add('hidden');
+                });
+            } else {
+                showDemoNotification('App is already installed or not supported', 'info');
+            }
+        }
+        
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
         }
         
         // Initialize everything

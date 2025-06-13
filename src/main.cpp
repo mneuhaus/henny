@@ -329,6 +329,12 @@ String generateHTML() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Henny</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Henny">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
@@ -392,6 +398,9 @@ String generateHTML() {
                     </button>
                     <button id="language-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Language / Sprache">
                         <span class="text-sm font-medium">{LANGUAGE_DISPLAY}</span>
+                    </button>
+                    <button id="install-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20 hidden" title="Install App">
+                        <i data-lucide="download" class="w-5 h-5"></i>
                     </button>
                     <button id="settings-btn" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white p-3 rounded-xl transition-all shadow-lg hover:shadow-xl border border-white/20" title="Settings / Einstellungen">
                         <i data-lucide="settings" class="w-5 h-5"></i>
@@ -903,6 +912,7 @@ String generateHTML() {
             // Setup event listeners
             document.getElementById('test-motor-btn').addEventListener('click', testMotor);
             document.getElementById('language-btn').addEventListener('click', toggleLanguage);
+            document.getElementById('install-btn').addEventListener('click', showInstallPrompt);
             document.getElementById('settings-btn').addEventListener('click', toggleSettings);
             document.getElementById('update-config-btn').addEventListener('click', updateConfig);
             document.getElementById('calibrate-btn').addEventListener('click', calibrate);
@@ -914,11 +924,51 @@ String generateHTML() {
             updateFeedingSchedule();
         });
         
+        // PWA Install functionality
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-btn').classList.remove('hidden');
+        });
+        
+        function showInstallPrompt() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showNotification('App installed successfully!', 'success');
+                    } else {
+                        showNotification('App installation declined', 'info');
+                    }
+                    deferredPrompt = null;
+                    document.getElementById('install-btn').classList.add('hidden');
+                });
+            } else {
+                showNotification('App is already installed or not supported', 'info');
+            }
+        }
+        
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+        
         // Fallback for immediate loading
         if (document.readyState !== 'loading') {
             lucide.createIcons();
             document.getElementById('test-motor-btn')?.addEventListener('click', testMotor);
             document.getElementById('language-btn')?.addEventListener('click', toggleLanguage);
+            document.getElementById('install-btn')?.addEventListener('click', showInstallPrompt);
             document.getElementById('settings-btn')?.addEventListener('click', toggleSettings);
             document.getElementById('update-config-btn')?.addEventListener('click', updateConfig);
             document.getElementById('calibrate-btn')?.addEventListener('click', calibrate);
@@ -992,7 +1042,9 @@ String generateHTML() {
     html.replace("{DISPENSED_GRAMS_PLACEHOLDER}", getTranslation("dispensed_grams_placeholder", language));
     html.replace("{START_TEST_BUTTON}", getTranslation("start_test_button", language));
     html.replace("{SAVE_CALIBRATION_BUTTON}", getTranslation("save_calibration_button", language));
-    html.replace("{LANGUAGE_DISPLAY}", language.toUpperCase());
+    String langDisplay = language;
+    langDisplay.toUpperCase();
+    html.replace("{LANGUAGE_DISPLAY}", langDisplay);
     
     return html;
 }
@@ -1200,6 +1252,86 @@ void handleOTAUpdatePost() {
     }
 }
 
+void handleManifest() {
+    String manifest = R"JSON({
+  "name": "Henny Smart Chicken Feeder",
+  "short_name": "Henny",
+  "description": "Intelligent chicken feeding system with configurable schedules and remote monitoring",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#415554",
+  "theme_color": "#059669",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["utilities", "productivity"]
+})JSON";
+    
+    server.send(200, "application/manifest+json", manifest);
+}
+
+void handleServiceWorker() {
+    String sw = R"JS(const CACHE_NAME = 'henny-v1';
+const urlsToCache = [
+  '/',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/lucide@latest/dist/umd/lucide.js'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        return response || fetch(event.request);
+      }
+    )
+  );
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});)JS";
+    
+    server.send(200, "application/javascript", sw);
+}
+
 void setup() {
     Serial.begin(115200);
     delay(2000); // Wait for USB-CDC to be ready
@@ -1257,6 +1389,8 @@ void setup() {
     server.on("/wifi", HTTP_POST, handleWiFiConfig);
     server.on("/update", HTTP_GET, handleOTAUpload);
     server.on("/update", HTTP_POST, handleOTAUpdatePost, handleOTAUpdate);
+    server.on("/manifest.json", handleManifest);
+    server.on("/sw.js", handleServiceWorker);
     server.begin();
     
     // Setup Arduino OTA
