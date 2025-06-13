@@ -1352,6 +1352,8 @@ void setup() {
     language = preferences.getString("lang", "de");
     spreader.setCalibration(preferences.getFloat("cal", 50.0));
     
+    // Set hostname before WiFi connection
+    WiFi.setHostname("henny");
     WiFi.begin(preferences.getString("ssid", "").c_str(), 
                preferences.getString("pass", "").c_str());
     
@@ -1383,6 +1385,7 @@ void setup() {
     } else {
         Serial.println("\nFailed to connect. Starting AP mode...");
         WiFi.softAP("Henny-Setup", "hennyfeeder");
+        WiFi.softAPsetHostname("henny");
         Serial.print("AP IP: ");
         Serial.println(WiFi.softAPIP());
         
