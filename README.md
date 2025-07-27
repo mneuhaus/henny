@@ -115,6 +115,10 @@ Open source project for the chicken-keeping community. Areas for contribution:
 
 Built with C++/Arduino, PlatformIO, and modern web technologies.
 
+## License and Attribution
+
+- Chicken icon from [SVG Repo](https://www.svgrepo.com/svg/64207/chicken) (CC0 License)
+
 ---
 
 **Henny v2.0 - Intelligent, configurable, and connected chicken feeding!**

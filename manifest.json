@@ -2,12 +2,12 @@
   "name": "Henny Smart Chicken Feeder",
   "short_name": "Henny",
   "description": "Intelligent chicken feeding system with configurable schedules and remote monitoring",
-  "start_url": "/henny/",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#415554",
   "theme_color": "#059669",
   "orientation": "portrait-primary",
-  "scope": "/henny/",
+  "scope": "/",
   "icons": [
     {
       "src": "icon-192.png",

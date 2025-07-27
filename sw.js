@@ -1,12 +1,11 @@
 const CACHE_NAME = 'henny-v1';
 const urlsToCache = [
-  '/henny/',
-  '/henny/index.html',
-  '/henny/manifest.json',
-  '/henny/icon-192.png',
-  '/henny/icon-512.png',
-  '/henny/icon-192.svg',
-  '/henny/icon-512.svg',
+  '/',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-192.svg',
+  '/icon-512.svg',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest/dist/umd/lucide.js'
 ];
